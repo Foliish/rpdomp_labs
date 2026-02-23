@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">labs</string>
+    <string name="add_quote">Add quote</string>
+    <string name="author">Author</string>
+    <string name="rating">Rating</string>
+    <string name="no_quotes">No quotes yet</string>
+    <string name="caption">Caption</string>
+    <string name="content">Content</string>
+    <string name="save">Save</string>
+    <string name="quot">Quot</string>
+</resources>

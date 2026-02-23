@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Лабы</string>
+    <string name="add_quote">Добавить цитату</string>
+    <string name="author">Автор</string>
+    <string name="rating">Рейтинг</string>
+    <string name="no_quotes">Пока нет цитат</string>
+    <string name="caption">Название</string>
+    <string name="content">Содержание</string>
+    <string name="save">Сохранить</string>
+    <string name="quot">Цитата</string>
+</resources>
