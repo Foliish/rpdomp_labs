@@ -45,7 +45,9 @@ fun QuotesScreen(
     onQuoteClick: (Long) -> Unit,
     viewModel: QuotesViewModel = viewModel()
 ) {
-
+    LaunchedEffect(Unit) {
+        viewModel.loadQuotes()
+    }
     val quotes = viewModel.quotes
 
     Scaffold(
