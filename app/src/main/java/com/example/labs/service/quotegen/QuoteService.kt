@@ -70,17 +70,14 @@ class QuoteService {
 
     private fun parseJson(jsonStr: String): QuoteResult {
         return try {
-            // Очищаем от возможных Markdown-тегов
             val cleanInput = jsonStr.removeSurrounding("```json", "```").trim()
 
-            // Регулярки, которые игнорируют лишние пробелы и переносы внутри JSON
             val titleRegex = """"title"\s*:\s*"([^"]+)"""".toRegex()
             val quoteRegex = """"quote"\s*:\s*"([^"]+)"""".toRegex()
 
             val titleMatch = titleRegex.find(cleanInput)?.groupValues?.get(1)
             val quoteMatch = quoteRegex.find(cleanInput)?.groupValues?.get(1)
 
-            // .replace("\\n", "\n") превращает текстовый символ в реальный перенос строки
             val finalTitle = titleMatch?.replace("\\n", "\n")?.trim() ?: "Мудрость"
             val finalQuote = quoteMatch?.replace("\\n", "\n")?.trim() ?: cleanInput
 

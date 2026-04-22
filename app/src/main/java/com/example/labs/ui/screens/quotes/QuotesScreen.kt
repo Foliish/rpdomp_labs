@@ -1,5 +1,6 @@
 package com.example.labs.ui.screens.quotes
 
+import android.widget.Toast
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,16 +31,13 @@ fun QuotesScreen(
     LaunchedEffect(Unit) {
         viewModel.loadQuotes()
     }
-
     val quotes = viewModel.quotes
-    val isLoading = viewModel.isLoading // Читаем состояние загрузки
-
+    val isLoading = viewModel.isLoading
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.quot)) },
                 actions = {
-                    // Если грузим - показываем крутилку, иначе кнопку
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier
@@ -89,7 +88,6 @@ fun QuotesScreen(
     }
 }
 
-// ... QuoteItem остается без изменений
 @Composable
 fun QuoteItem(
     quote: QuoteUiModel,

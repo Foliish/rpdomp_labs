@@ -1,24 +1,23 @@
 package com.example.labs.ui.screens.quotes
 
-
-import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Application
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.content.Context
 import android.widget.Toast
-import androidx.annotation.RequiresPermission
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.labs.data.repository.QuotesRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import androidx.compose.runtime.*
 import com.example.labs.data.model.Author
 import com.example.labs.data.model.Quote
+import com.example.labs.data.repository.QuotesRepository
+import com.example.labs.service.ConnectivityObserver.ConnectivityObserver
+import com.example.labs.service.ConnectivityObserver.NetworkConnectivityObserver
 import com.example.labs.service.quotegen.QuoteService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 data class QuoteUiModel(
@@ -29,22 +28,31 @@ data class QuoteUiModel(
     val authorName: String
 )
 
-// ... (QuoteUiModel остается без изменений)
-
 class QuotesViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = QuotesRepository(application)
-    private val quoteService = QuoteService() // Наш сервис для работы с OpenAI
+    private val quoteService = QuoteService()
+
+    private val connectivityObserver = NetworkConnectivityObserver(application)
 
     var quotes by mutableStateOf<List<QuoteUiModel>>(emptyList())
         private set
 
-    // Состояние для отображения крутилки загрузки
     var isLoading by mutableStateOf(false)
         private set
 
+    var isOnline by mutableStateOf(false)
+        private set
+
     init {
+        observeNetworkChanges()
         loadQuotes()
+    }
+
+    private fun observeNetworkChanges() {
+        connectivityObserver.observe().onEach { status ->
+            isOnline = status == ConnectivityObserver.Status.Available
+        }.launchIn(viewModelScope)
     }
 
     fun loadQuotes() {
@@ -65,68 +73,48 @@ class QuotesViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun isNetworkAvailable(): Boolean {
-        val connectivityManager = getApplication<Application>()
-            .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork ?: return false
-        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
-
-        return when {
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
-            else -> false
-        }
-    }
-    // Новая функция для генерации и сохранения
     fun generateAndSaveNewQuote() {
-        if (!isNetworkAvailable()) {
+        if (!isOnline) {
             Toast.makeText(getApplication(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show()
             return
         }
-        if (isLoading) return // Защита от двойного клика
+
+        if (isLoading) return
 
         viewModelScope.launch {
             isLoading = true
             try {
-                // Можно сделать массив авторов и выбирать рандомного
                 val authors = listOf("Джейсон Стэтхем", "Том Круз", "Альберт Эйнштейн", "Шрек")
                 val selectedAuthor = authors.random()
                 val seed = Random.nextInt(0, 10000)
 
-                // 1. Генерируем цитату через LLM
                 val generated = quoteService.generateQuote(selectedAuthor, seed)
 
                 withContext(Dispatchers.IO) {
-                    // 2. Ищем автора в БД. Если нет — создаем.
                     var author = repository.getAuthorByName(selectedAuthor)
                     val authorId: Long
 
                     if (author == null) {
-                        // Предполагаю, что у вас дата-класс Author выглядит примерно так.
-                        // Подправьте поля, если они отличаются.
                         val newAuthor = Author(name = selectedAuthor)
                         authorId = repository.insertAuthor(newAuthor)
                     } else {
-                        authorId = author.id // Или как у вас называется поле ID в Author
+                        authorId = author.id
                     }
 
-                    // 3. Создаем и сохраняем новую цитату в БД
                     val newQuote = Quote(
                         authorId = authorId,
                         header = generated.title,
                         content = generated.text,
-                        rating = 5.0, // Дефолтный рейтинг для новых шедевров
+                        rating = 5.0,
                         readTime = 1
                     )
                     repository.insertQuote(newQuote)
                 }
 
-                // 4. Обновляем список на экране
                 loadQuotes()
             } catch (e: Exception) {
+                Toast.makeText(getApplication(), "Ошибка при получении цитаты", Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
-                // Здесь можно добавить логику показа Snackbar с ошибкой
             } finally {
                 isLoading = false
             }
