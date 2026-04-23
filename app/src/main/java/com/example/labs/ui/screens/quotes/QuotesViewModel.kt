@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
+import com.example.labs.util.FuzzySearchUtil
+
+enum class SortOrder {
+    RATING_DESC, AUTHOR_ASC, TITLE_ASC
+}
 
 data class QuoteUiModel(
     val id: Long,
@@ -31,6 +36,7 @@ data class QuoteUiModel(
 class QuotesViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = QuotesRepository(application)
+    private val firestoreRepository = com.example.labs.data.repository.FirestoreRepository()
     private val quoteService = QuoteService()
 
     private val connectivityObserver = NetworkConnectivityObserver(application)
@@ -43,6 +49,27 @@ class QuotesViewModel(application: Application) : AndroidViewModel(application) 
 
     var isOnline by mutableStateOf(false)
         private set
+
+    var searchQuery by mutableStateOf("")
+    var sortOrder by mutableStateOf(SortOrder.RATING_DESC)
+
+    val filteredAndSortedQuotes: List<QuoteUiModel>
+        get() = quotes
+            .filter { quote ->
+                if (searchQuery.isBlank()) true
+                else {
+                    FuzzySearchUtil.fuzzyMatch(searchQuery, quote.header) ||
+                    FuzzySearchUtil.fuzzyMatch(searchQuery, quote.content) ||
+                    FuzzySearchUtil.fuzzyMatch(searchQuery, quote.authorName)
+                }
+            }
+            .let { list ->
+                when (sortOrder) {
+                    SortOrder.RATING_DESC -> list.sortedByDescending { it.rating }
+                    SortOrder.AUTHOR_ASC -> list.sortedBy { it.authorName }
+                    SortOrder.TITLE_ASC -> list.sortedBy { it.header }
+                }
+            }
 
     init {
         observeNetworkChanges()
@@ -108,7 +135,12 @@ class QuotesViewModel(application: Application) : AndroidViewModel(application) 
                         rating = 5.0,
                         readTime = 1
                     )
-                    repository.insertQuote(newQuote)
+                    newQuote.id = repository.insertQuote(newQuote)
+
+                    // Sync to Firebase
+                    val authorToSync = author ?: Author(id = authorId, name = selectedAuthor)
+                    firestoreRepository.saveAuthor(authorToSync, {}, {})
+                    firestoreRepository.saveQuote(newQuote, {}, {})
                 }
 
                 loadQuotes()

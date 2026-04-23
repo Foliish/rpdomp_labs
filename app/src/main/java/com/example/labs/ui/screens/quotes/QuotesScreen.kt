@@ -62,26 +62,62 @@ fun QuotesScreen(
             }
         }
     ) { padding ->
-        if (quotes.isEmpty()) {
-            Box(
+        val filteredQuotes = viewModel.filteredAndSortedQuotes
+
+        Column(modifier = Modifier.padding(padding)) {
+            // Search Bar
+            OutlinedTextField(
+                value = viewModel.searchQuery,
+                onValueChange = { viewModel.searchQuery = it },
+                label = { Text("Поиск (нечеткий)") },
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            // Sort Options
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(stringResource(R.string.no_quotes))
+                FilterChip(
+                    selected = viewModel.sortOrder == SortOrder.RATING_DESC,
+                    onClick = { viewModel.sortOrder = SortOrder.RATING_DESC },
+                    label = { Text("По рейтингу") }
+                )
+                FilterChip(
+                    selected = viewModel.sortOrder == SortOrder.AUTHOR_ASC,
+                    onClick = { viewModel.sortOrder = SortOrder.AUTHOR_ASC },
+                    label = { Text("По автору") }
+                )
+                FilterChip(
+                    selected = viewModel.sortOrder == SortOrder.TITLE_ASC,
+                    onClick = { viewModel.sortOrder = SortOrder.TITLE_ASC },
+                    label = { Text("По названию") }
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(quotes) { quote ->
-                    QuoteItem(
-                        quote = quote,
-                        onClick = { onQuoteClick(quote.id) }
-                    )
+
+            if (filteredQuotes.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(stringResource(R.string.no_quotes))
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredQuotes) { quote ->
+                        QuoteItem(
+                            quote = quote,
+                            onClick = { onQuoteClick(quote.id) }
+                        )
+                    }
                 }
             }
         }

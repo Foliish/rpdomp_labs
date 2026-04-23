@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 configurations.all {
@@ -44,6 +45,9 @@ android {
 }
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:33.6.0"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation(libs.androidx.work.runtime.ktx)
     implementation("com.aallam.openai:openai-client:3.4.1")
     implementation("io.ktor:ktor-client-okhttp:2.3.11")
     implementation(platform("androidx.compose:compose-bom:2025.02.00"))

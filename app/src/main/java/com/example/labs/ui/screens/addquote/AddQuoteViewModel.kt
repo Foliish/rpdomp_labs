@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 class AddQuoteViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = QuotesRepository(application)
+    private val firestoreRepository = com.example.labs.data.repository.FirestoreRepository()
 
     var header by mutableStateOf("")
     var content by mutableStateOf("")
@@ -30,26 +31,29 @@ class AddQuoteViewModel(application: Application) : AndroidViewModel(application
 
                 val existingAuthor = repository.getAuthorByName(trimmedName)
 
-                val authorId = if (existingAuthor != null) {
-                    existingAuthor.id
+                val author = if (existingAuthor != null) {
+                    existingAuthor
                 } else {
-                    repository.insertAuthor(
-                        Author(
-                            name = trimmedName,
-                            rating = rating.toDouble()
-                        )
+                    val newAuthor = Author(
+                        name = trimmedName,
+                        rating = rating.toDouble()
                     )
+                    newAuthor.id = repository.insertAuthor(newAuthor)
+                    newAuthor
                 }
 
-                repository.insertQuote(
-                    Quote(
-                        authorId = authorId,
-                        header = header.trim(),
-                        content = content.trim(),
-                        rating = rating.toDouble(),
-                        readTime = content.length / 10
-                    )
+                val quote = Quote(
+                    authorId = author.id,
+                    header = header.trim(),
+                    content = content.trim(),
+                    rating = rating.toDouble(),
+                    readTime = content.length / 10
                 )
+                quote.id = repository.insertQuote(quote)
+
+                // Sync to Firestore
+                firestoreRepository.saveAuthor(author, onSuccess = {}, onFailure = {})
+                firestoreRepository.saveQuote(quote, onSuccess = {}, onFailure = {})
             }
 
             onSaved()
