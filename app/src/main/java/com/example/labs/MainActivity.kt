@@ -27,11 +27,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Создаем канал уведомлений
+
         NotificationHelper(this).createNotificationChannel()
 
-        // Проверяем/запрашиваем разрешение (для Android 13+)
         checkNotificationPermission()
 
         setContent {
@@ -53,7 +51,6 @@ class MainActivity : ComponentActivity() {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         } else {
-            // На версиях ниже 13 разрешение не требуется запрашивать в рантайме
             scheduleReminder()
         }
     }

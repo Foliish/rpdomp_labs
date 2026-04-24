@@ -25,6 +25,25 @@ class QuoteDao(private val dbHelper: DatabaseHelper) {
         return id
     }
 
+    fun insertOrReplaceQuote(quote: Quote): Long {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            if (quote.id > 0L) {
+                put(DatabaseHelper.COLUMN_QUOTE_ID, quote.id)
+            }
+            put(DatabaseHelper.COLUMN_QUOTE_AUTHOR_ID, quote.authorId)
+            put(DatabaseHelper.COLUMN_QUOTE_HEADER, quote.header)
+            put(DatabaseHelper.COLUMN_QUOTE_CONTENT, quote.content)
+            put(DatabaseHelper.COLUMN_QUOTE_RATING, quote.rating)
+            put(DatabaseHelper.COLUMN_QUOTE_READ_TIME, quote.readTime)
+        }
+
+        val id = db.insertWithOnConflict(DatabaseHelper.TABLE_QUOTES, null, values, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE)
+        db.close()
+        quote.id = id
+        return id
+    }
+
     fun insertQuoteWithAuthorUpdate(quote: Quote, authorDao: AuthorDao): Long {
         val db = dbHelper.writableDatabase
         db.beginTransaction()

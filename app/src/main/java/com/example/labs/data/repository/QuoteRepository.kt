@@ -13,6 +13,7 @@ class QuotesRepository(private val context: Context) {
     private val quoteDao = QuoteDao(dbHelper)
 
     fun insertAuthor(author: Author): Long = authorDao.insertAuthor(author)
+    fun insertOrReplaceAuthor(author: Author): Long = authorDao.insertOrReplaceAuthor(author)
     fun getAuthorById(id: Long): Author? = authorDao.getAuthorById(id)
     fun getAllAuthors(): List<Author> = authorDao.getAllAuthors()
     fun updateAuthor(author: Author): Int = authorDao.updateAuthor(author)
@@ -26,6 +27,7 @@ class QuotesRepository(private val context: Context) {
     }
 
     fun insertQuote(quote: Quote): Long = quoteDao.insertQuote(quote)
+    fun insertOrReplaceQuote(quote: Quote): Long = quoteDao.insertOrReplaceQuote(quote)
     fun insertQuoteWithAuthorUpdate(quote: Quote): Long =
         quoteDao.insertQuoteWithAuthorUpdate(quote, authorDao)
     fun getQuoteById(id: Long): Quote? = quoteDao.getQuoteById(id)

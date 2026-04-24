@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.labs.data.model.Author
 import com.example.labs.data.model.Quote
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 
 class FirestoreRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -34,5 +35,35 @@ class FirestoreRepository {
                 Log.w("FirestoreRepo", "Error saving quote", e)
                 onFailure(e)
             }
+    }
+
+    fun getQuotesFlow(): kotlinx.coroutines.flow.Flow<List<Quote>> = kotlinx.coroutines.flow.callbackFlow {
+        val listener = db.collection("quotes")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    close(e)
+                    return@addSnapshotListener
+                }
+                val quotesList = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Quote::class.java)
+                } ?: emptyList()
+                trySend(quotesList)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun getAuthorsFlow(): kotlinx.coroutines.flow.Flow<List<Author>> = kotlinx.coroutines.flow.callbackFlow {
+        val listener = db.collection("authors")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    close(e)
+                    return@addSnapshotListener
+                }
+                val authorsList = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Author::class.java)
+                } ?: emptyList()
+                trySend(authorsList)
+            }
+        awaitClose { listener.remove() }
     }
 }

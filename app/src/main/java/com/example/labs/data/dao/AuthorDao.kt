@@ -23,6 +23,25 @@ class AuthorDao(private val dbHelper: DatabaseHelper) {
         return id
     }
 
+    fun insertOrReplaceAuthor(author: Author): Long {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            if (author.id > 0L) {
+                put(DatabaseHelper.COLUMN_AUTHOR_ID, author.id)
+            }
+            put(DatabaseHelper.COLUMN_AUTHOR_NAME, author.name)
+            put(DatabaseHelper.COLUMN_AUTHOR_RATING, author.rating)
+            author.lastQuoteId?.let {
+                put(DatabaseHelper.COLUMN_AUTHOR_LAST_QUOTE_ID, it)
+            }
+        }
+
+        val id = db.insertWithOnConflict(DatabaseHelper.TABLE_AUTHORS, null, values, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE)
+        db.close()
+        author.id = id
+        return id
+    }
+
     fun insertAuthors(authors: List<Author>): List<Long> {
         val db = dbHelper.writableDatabase
         val ids = mutableListOf<Long>()

@@ -14,13 +14,21 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import com.example.labs.R
+import com.example.labs.data.repository.AuthRepository
+import com.example.labs.ui.navigation.Screen
 
 @Composable
-fun SplashScreen(onNavigate: () -> Unit) {
+fun SplashScreen(onNavigate: (String) -> Unit) {
+    val authRepository = AuthRepository()
 
     LaunchedEffect(Unit) {
         delay(1000)
-        onNavigate()
+        val nextRoute = if (authRepository.isUserLoggedIn) {
+            Screen.Quotes.route
+        } else {
+            Screen.Login.route
+        }
+        onNavigate(nextRoute)
     }
 
     Box(

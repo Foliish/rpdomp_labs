@@ -25,7 +25,20 @@ class NetworkConnectivityObserver(
             val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     super.onAvailable(network)
-                    trySend(ConnectivityObserver.Status.Available)
+                    // We don't send Available here yet; we wait for onCapabilitiesChanged
+                }
+
+                override fun onCapabilitiesChanged(
+                    network: Network,
+                    networkCapabilities: android.net.NetworkCapabilities
+                ) {
+                    super.onCapabilitiesChanged(network, networkCapabilities)
+                    val isValidated = networkCapabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    if (isValidated) {
+                        trySend(ConnectivityObserver.Status.Available)
+                    } else {
+                        trySend(ConnectivityObserver.Status.Unavailable)
+                    }
                 }
 
                 override fun onLost(network: Network) {
@@ -37,6 +50,17 @@ class NetworkConnectivityObserver(
                     super.onUnavailable()
                     trySend(ConnectivityObserver.Status.Unavailable)
                 }
+            }
+
+            // Get initial state
+            val activeNetwork = connectivityManager.activeNetwork
+            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+            val hasInternet = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+
+            if (hasInternet) {
+                trySend(ConnectivityObserver.Status.Available)
+            } else {
+                trySend(ConnectivityObserver.Status.Unavailable)
             }
 
             connectivityManager.registerDefaultNetworkCallback(callback)

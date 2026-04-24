@@ -9,6 +9,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.labs.data.model.Author
 import com.example.labs.data.model.Quote
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import com.example.labs.data.repository.QuotesRepository
 import com.example.labs.service.ConnectivityObserver.ConnectivityObserver
 import com.example.labs.service.ConnectivityObserver.NetworkConnectivityObserver
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.combine
 import kotlin.random.Random
 import com.example.labs.util.FuzzySearchUtil
 
@@ -82,21 +85,48 @@ class QuotesViewModel(application: Application) : AndroidViewModel(application) 
         }.launchIn(viewModelScope)
     }
 
+    private var quotesJob: Job? = null
+
     fun loadQuotes() {
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                repository.getAllQuotes().map { quote ->
-                    val author = repository.getAuthorById(quote.authorId)
-                    QuoteUiModel(
-                        id = quote.id,
-                        header = quote.header,
-                        content = quote.content,
-                        rating = quote.rating,
-                        authorName = author?.name ?: "Unknown"
-                    )
+        quotesJob?.cancel()
+        quotesJob = viewModelScope.launch(Dispatchers.IO) {
+            var retryCount = 0
+            while (true) {
+                try {
+                    combine(
+                        firestoreRepository.getQuotesFlow(),
+                        firestoreRepository.getAuthorsFlow()
+                    ) { firestoreQuotes, firestoreAuthors ->
+                        retryCount = 0 // Reset retry count on successful emission
+                        
+                        firestoreAuthors.forEach { repository.insertOrReplaceAuthor(it) }
+                        firestoreQuotes.forEach { repository.insertOrReplaceQuote(it) }
+
+                        val authorMap = firestoreAuthors.associateBy { it.id }
+                        firestoreQuotes.map { quote ->
+                            val author = authorMap[quote.authorId]
+                            QuoteUiModel(
+                                id = quote.id,
+                                header = quote.header,
+                                content = quote.content,
+                                rating = quote.rating,
+                                authorName = author?.name ?: "Unknown"
+                            )
+                        }
+                    }.collect { uiModels ->
+                        withContext(Dispatchers.Main) {
+                            quotes = uiModels
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    retryCount++
+                    delay(run {
+                        val wait = (1000L * retryCount).coerceAtMost(30000L)
+                        wait
+                    })
                 }
             }
-            quotes = result
         }
     }
 
@@ -137,7 +167,6 @@ class QuotesViewModel(application: Application) : AndroidViewModel(application) 
                     )
                     newQuote.id = repository.insertQuote(newQuote)
 
-                    // Sync to Firebase
                     val authorToSync = author ?: Author(id = authorId, name = selectedAuthor)
                     firestoreRepository.saveAuthor(authorToSync, {}, {})
                     firestoreRepository.saveQuote(newQuote, {}, {})
